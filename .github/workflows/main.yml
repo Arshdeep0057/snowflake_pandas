@@ -67,6 +67,9 @@ jobs:
               cur = conn.cursor()
               with open("$file", "r") as f:
                   sql = f.read()
+
+              
+              print(f"\n--- Running SQL from {file} ---\n{sql}\n-------------------")
               try:
                   cur.execute(sql)
                   print(f"Executed {file} successfully.")
