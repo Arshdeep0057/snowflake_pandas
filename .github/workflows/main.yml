@@ -53,27 +53,27 @@ jobs:
           for file in $CHANGED_FILES; do
             echo "Running $file..."
             python <<EOF
-import snowflake.connector
+              import snowflake.connector
 
-conn = snowflake.connector.connect(
-    account="${{ env.SF_ACCOUNT }}",
-    user="${{ env.SF_USER }}",
-    password="${{ env.SF_PASSWORD }}",
-    warehouse="${{ env.SF_WAREHOUSE }}",
-    database="${{ env.SF_DATABASE }}",
-    schema="${{ env.SF_SCHEMA }}",
-    role="${{ env.SF_ROLE }}"
-)
-cur = conn.cursor()
-with open("$file", "r") as f:
-    sql = f.read()
-try:
-    cur.execute(sql)
-    print(f"Executed {file} successfully.")
-except Exception as e:
-    print(f"Error executing {file}: {e}")
-finally:
-    cur.close()
-    conn.close()
-EOF
-          done
+              conn = snowflake.connector.connect(
+              account="${{ env.SF_ACCOUNT }}",
+              user="${{ env.SF_USER }}",
+              password="${{ env.SF_PASSWORD }}",
+              warehouse="${{ env.SF_WAREHOUSE }}",
+              database="${{ env.SF_DATABASE }}",
+              schema="${{ env.SF_SCHEMA }}",
+              role="${{ env.SF_ROLE }}"
+              )
+              cur = conn.cursor()
+              with open("$file", "r") as f:
+                  sql = f.read()
+              try:
+                  cur.execute(sql)
+                  print(f"Executed {file} successfully.")
+              except Exception as e:
+                  print(f"Error executing {file}: {e}")
+              finally:
+                  cur.close()
+                  conn.close()
+          EOF
+                    done
