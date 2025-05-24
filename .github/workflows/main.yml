@@ -22,7 +22,7 @@ jobs:
           echo "changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
           if [ -z "$CHANGED_FILES" ]; then
             echo "No SQL files changed."
-            exit 0
+            
           else
             echo "Changed SQL files:"
             echo "$CHANGED_FILES"
