@@ -1,0 +1,79 @@
+name: Run SQL on Snowflake
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  run-sql:
+    name: Run SQL scripts if any
+    runs-on: ubuntu-latest
+    environment: dev_env
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Check for changed .sql files
+        id: changed-sql
+        run: |
+          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }} | grep '\.sql$' || true)
+          echo "changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No SQL files changed."
+            exit 0
+          else
+            echo "Changed SQL files:"
+            echo "$CHANGED_FILES"
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install snowflake-connector-python
+
+      - name: Run SQL files on Snowflake
+        env:
+          SF_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SF_USER: ${{ secrets.SNOWFLAKE_USER }}
+          SF_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+          SF_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+          SF_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
+          SF_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
+          SF_ROLE: ${{ secrets.SNOWFLAKE_ROLE }}
+        run: |
+          CHANGED_FILES="${{ steps.changed-sql.outputs.changed_files }}"
+          IFS=$'\n'
+          for file in $CHANGED_FILES; do
+            echo "Running $file..."
+            python <<EOF
+import snowflake.connector
+
+conn = snowflake.connector.connect(
+    account="${{ env.SF_ACCOUNT }}",
+    user="${{ env.SF_USER }}",
+    password="${{ env.SF_PASSWORD }}",
+    warehouse="${{ env.SF_WAREHOUSE }}",
+    database="${{ env.SF_DATABASE }}",
+    schema="${{ env.SF_SCHEMA }}",
+    role="${{ env.SF_ROLE }}"
+)
+cur = conn.cursor()
+with open("$file", "r") as f:
+    sql = f.read()
+try:
+    cur.execute(sql)
+    print(f"Executed {file} successfully.")
+except Exception as e:
+    print(f"Error executing {file}: {e}")
+finally:
+    cur.close()
+    conn.close()
+EOF
+          done
