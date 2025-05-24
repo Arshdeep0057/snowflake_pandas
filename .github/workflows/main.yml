@@ -33,49 +33,48 @@ jobs:
 
       - name: Run changed SQL files inline
         run: |
-          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '\.sql$' || true)
+          
 
 
-          echo "SQL files to execute: $CHANGED_FILES"
+          echo "SQL files to execute"
 
-          for file in $CHANGED_FILES; do
-            echo "Executing: $file"
-            python3 - <<EOF
-            import os
-            import snowflake.connector
-            
-            file_path = "${file}"
-            print(f"Running SQL file: {file_path}")
-            
-            if not os.path.exists(file_path):
-                print(f"File not found: {file_path}")
-                exit(1)
-            
-            with open(file_path, 'r') as f:
-                sql = f.read()
-            
-            print(f"\n--- SQL Content ---\n{sql}\n-------------------")
-            
-            conn = snowflake.connector.connect(
-                account=os.environ['SF_ACCOUNT'],
-                user=os.environ['SF_USER'],
-                password=os.environ['SF_PASSWORD'],
-                warehouse=os.environ['SF_WAREHOUSE'],
-                database=os.environ['SF_DATABASE'],
-                schema=os.environ['SF_SCHEMA'],
-                role=os.environ['SF_ROLE'],
-                autocommit=True
-            )
-            
-            cur = conn.cursor()
-            try:
-                cur.execute(sql)
-                print(f"✅ Executed {file_path} successfully.")
-            except Exception as e:
-                print(f"❌ Error executing {file_path}: {e}")
-                exit(1)
-            finally:
-                cur.close()
-                conn.close()
-            EOF
-          done
+          
+                python3 - <<EOF
+                import os
+                import snowflake.connector
+                
+                file_path = "${file}"
+                print(f"Running SQL file: {file_path}")
+                
+                if not os.path.exists(file_path):
+                    print(f"File not found: {file_path}")
+                    exit(1)
+                
+                with open(file_path, 'r') as f:
+                    sql = f.read()
+                
+                print(f"\n--- SQL Content ---\n{sql}\n-------------------")
+                
+                conn = snowflake.connector.connect(
+                    account=os.environ['SF_ACCOUNT'],
+                    user=os.environ['SF_USER'],
+                    password=os.environ['SF_PASSWORD'],
+                    warehouse=os.environ['SF_WAREHOUSE'],
+                    database=os.environ['SF_DATABASE'],
+                    schema=os.environ['SF_SCHEMA'],
+                    role=os.environ['SF_ROLE'],
+                    autocommit=True
+                )
+                
+                cur = conn.cursor()
+                try:
+                    cur.execute(sql)
+                    print(f"✅ Executed {file_path} successfully.")
+                except Exception as e:
+                    print(f"❌ Error executing {file_path}: {e}")
+                    exit(1)
+                finally:
+                    cur.close()
+                    conn.close()
+                EOF
+              done
