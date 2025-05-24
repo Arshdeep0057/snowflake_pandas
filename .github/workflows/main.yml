@@ -3,7 +3,7 @@ name: Run SQL on Snowflake
 on:
   push:
     branches:
-      - dev
+      - main
 
 jobs:
   run-sql:
