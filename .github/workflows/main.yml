@@ -1,9 +1,9 @@
-name: Run all SQL files on Snowflake
+name: Run Changed SQL Files on Snowflake (Inline)
 
 on:
   push:
     branches:
-      - 'main'  # Runs on push to any branch
+      - 'main'
 
 env:
   SF_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
@@ -28,52 +28,58 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install Snowflake connector
+      - name: Install Snowflake Connector
         run: pip install snowflake-connector-python
 
-      - name: Create SQL runner script
+      - name: Run changed SQL files inline
         run: |
-          cat <<EOF > run_sql.py
-          import sys
-          import snowflake.connector
-          import os
-          import glob
-          
-          # Get all .sql files recursively
-          sql_files = sorted(glob.glob("**/*.sql", recursive=True))
-          
-          if not sql_files:
-              print("No SQL files found in the repo.")
-              sys.exit(0)
-          
-          conn = snowflake.connector.connect(
-              account=os.getenv("SF_ACCOUNT"),
-              user=os.getenv("SF_USER"),
-              password=os.getenv("SF_PASSWORD"),
-              warehouse=os.getenv("SF_WAREHOUSE"),
-              database=os.getenv("SF_DATABASE"),
-              schema=os.getenv("SF_SCHEMA"),
-              role=os.getenv("SF_ROLE"),
-              autocommit=True
-          )
-          
-          cur = conn.cursor()
-          
-          for file in sql_files:
-              print(f"Running SQL from: {file}")
-              with open(file, "r") as f:
-                  sql = f.read()
-              print(f"\\n--- SQL Content ---\\n{sql}\\n-------------------")
-              try:
-                  cur.execute(sql)
-                  print(f"✅ Executed {file} successfully.\\n")
-              except Exception as e:
-                  print(f"❌ Error executing {file}: {e}")
-                  cur.close()
-                  conn.close()
-                  sys.exit(1)
-          
-          cur.close()
-          conn.close()
-          EOF
+          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '\.sql$' || true)
 
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No SQL files changed."
+            exit 0
+          fi
+
+          echo "SQL files to execute: $CHANGED_FILES"
+
+          for file in $CHANGED_FILES; do
+            echo "Executing: $file"
+            python3 - <<EOF
+            import os
+            import snowflake.connector
+            
+            file_path = "${file}"
+            print(f"Running SQL file: {file_path}")
+            
+            if not os.path.exists(file_path):
+                print(f"File not found: {file_path}")
+                exit(1)
+            
+            with open(file_path, 'r') as f:
+                sql = f.read()
+            
+            print(f"\n--- SQL Content ---\n{sql}\n-------------------")
+            
+            conn = snowflake.connector.connect(
+                account=os.environ['SF_ACCOUNT'],
+                user=os.environ['SF_USER'],
+                password=os.environ['SF_PASSWORD'],
+                warehouse=os.environ['SF_WAREHOUSE'],
+                database=os.environ['SF_DATABASE'],
+                schema=os.environ['SF_SCHEMA'],
+                role=os.environ['SF_ROLE'],
+                autocommit=True
+            )
+            
+            cur = conn.cursor()
+            try:
+                cur.execute(sql)
+                print(f"✅ Executed {file_path} successfully.")
+            except Exception as e:
+                print(f"❌ Error executing {file_path}: {e}")
+                exit(1)
+            finally:
+                cur.close()
+                conn.close()
+            EOF
+          done
