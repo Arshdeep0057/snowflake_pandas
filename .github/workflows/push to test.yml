@@ -18,16 +18,21 @@ jobs:
           ref: dev
           fetch-depth: 0
 
-      - name: Set up worktree for clean push
+      - name: Create clean working directory (exclude workflows and .git)
         run: |
           mkdir temp-tst
-          rsync -av --exclude='.github/workflows' ./ temp-tst/
-          cd temp-tst
+          rsync -av --exclude='.git' --exclude='.github/workflows' ./ temp-tst/
+
+      - name: Push code to tst branch (without workflows)
+        working-directory: ./temp-tst
+        env:
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
           git init
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote add origin https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git
+          git remote add origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
           git checkout -b tst
           git add .
-          git commit -m "Sync from dev branch after PR approval (excluding workflows)"
+          git commit -m "Sync from dev branch after PR approval (excluding workflows)" || echo "Nothing to commit"
           git push -f origin tst
