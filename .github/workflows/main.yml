@@ -82,4 +82,5 @@ jobs:
                 cur.close()
                 conn.close()
           EOF
+          done
                     
