@@ -1,14 +1,12 @@
 name: Push to tst on PR approval
 
 on:
-  pull_request_review:
-    types: [submitted]
+  push:
     branches:
       - dev
 
 jobs:
   push-to-tst:
-    if: github.event.review.state == 'approved'
     runs-on: ubuntu-latest
 
     steps:
@@ -24,7 +22,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           # Create a new branch from dev
-          git checkout -b tst
+          git checkout tst
 
           
 
