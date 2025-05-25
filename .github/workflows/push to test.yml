@@ -12,27 +12,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout dev branch
         uses: actions/checkout@v3
         with:
           ref: dev
           fetch-depth: 0
 
-      - name: Create clean working directory (exclude workflows and .git)
+      - name: Create a clean worktree without workflows
         run: |
-          mkdir temp-tst
-          rsync -av --exclude='.git' --exclude='.github/workflows' ./ temp-tst/
+          git worktree add ../tst-worktree
+          rsync -av --delete --exclude='.github/workflows' ./ ../tst-worktree/
 
-      - name: Push code to tst branch (without workflows)
-        working-directory: ./temp-tst
+      - name: Push to tst branch from worktree
+        working-directory: ../tst-worktree
         env:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
-          git init
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote add origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
-          git checkout -b tst
+          git checkout -B tst
           git add .
           git commit -m "Sync from dev branch after PR approval (excluding workflows)" || echo "Nothing to commit"
           git push -f origin tst
+
+      - name: Clean up worktree
+        run: |
+          git worktree remove ../tst-worktree --force
