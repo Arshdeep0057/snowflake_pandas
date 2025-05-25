@@ -12,22 +12,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout dev branch
         uses: actions/checkout@v3
         with:
           ref: dev
           fetch-depth: 0
 
-      - name: Set up worktree for clean push
+      - name: Create and switch to tst branch without workflows
         run: |
-          mkdir temp-tst
-          rsync -av --exclude='.github/workflows' ./ temp-tst/
-          cd temp-tst
-          git init
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote add origin https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git
+
+          # Create a new branch from dev
           git checkout -b tst
+
+          
+
           git add .
-          git commit -m "Sync from dev branch after PR approval (excluding workflows)"
-          git push -f origin tst
+          git commit -m "Sync from dev after PR approval (excluding workflows)" || echo "No changes to commit"
+
+      - name: Push to tst branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          git remote set-url origin https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git
+          git push origin tst --force
