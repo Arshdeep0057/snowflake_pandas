@@ -1,33 +1,36 @@
-name: Push to tst on PR approval
+name: Auto Merge dev to tst
 
 on:
-  pull_request_review:
-    types: [submitted]
+  push:
     branches:
       - dev
 
 jobs:
-  push-to-tst:
-    if: github.event.review.state == 'approved'
+  merge-dev-to-tst:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          ref: dev
           fetch-depth: 0
 
-      - name: Set up worktree for clean push
+      - name: Set up Git identity
         run: |
-          mkdir temp-tst
-          rsync -av --exclude='.github/workflows' ./ temp-tst/
-          cd temp-tst
-          git init
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote add origin https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git
-          git checkout -b tst
-          git add .
-          git commit -m "Sync from dev branch after PR approval (excluding workflows)"
-          git push -f origin tst
+
+      - name: Fetch all branches
+        run: |
+          git fetch origin tst:tst
+
+      - name: Merge dev into tst
+        run: |
+          git checkout tst
+          git merge dev --no-edit || echo "No changes to merge"
+          
+      - name: Push merged changes to tst
+        env:
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          git push origin tst
